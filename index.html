@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Tourist Planner</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .server-status {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 24px;
+            border-radius: 25px;
+            font-weight: 600;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .server-status.online {
+            background: #28a745;
+            color: white;
+        }
+
+        .server-status.offline {
+            background: #dc3545;
+            color: white;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .input-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .input-group label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .input-group input, .input-group select {
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .input-group input:focus, .input-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .location-btn {
+            background: #28a745;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-top: 8px;
+            transition: background 0.3s;
+        }
+
+        .location-btn:hover {
+            background: #218838;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+            margin-top: 20px;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .results {
+            display: none;
+            margin-top: 40px;
+        }
+
+        .results.active {
+            display: block;
+        }
+
+        .section-title {
+            font-size: 1.8em;
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+        }
+
+        #map {
+            height: 500px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .ai-analysis {
+            background: linear-gradient(135deg, #00c6ff 0%, #0072ff 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+        }
+
+        .ai-badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            margin-bottom: 15px;
+        }
+
+        .route-map {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+        }
+
+        .route-info {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .route-stat {
+            background: white;
+            padding: 15px 25px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .route-stat .value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .route-stat .label {
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .path-visualization {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .path-node {
+            background: #667eea;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 25px;
+            font-weight: 600;
+        }
+
+        .path-arrow {
+            color: #667eea;
+            font-size: 1.5em;
+        }
+
+        .itinerary-day {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border-left: 5px solid #667eea;
+        }
+
+        .day-header {
+            font-size: 1.4em;
+            color: #667eea;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        .activity {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .activity-time {
+            background: #667eea;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 6px;
+            font-weight: 600;
+            min-width: 100px;
+            text-align: center;
+        }
+
+        .activity-details {
+            flex: 1;
+        }
+
+        .hotels-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .hotel-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 20px;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .hotel-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            border-color: #667eea;
+        }
+
+        .hotel-card.recommended {
+            border-color: #28a745;
+            border-width: 3px;
+        }
+
+        .recommended-badge {
+            background: #28a745;
+            color: white;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.85em;
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+
+        .hotel-name {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .hotel-rating {
+            color: #ffc107;
+            margin-bottom: 10px;
+        }
+
+        .hotel-price {
+            font-size: 1.5em;
+            color: #667eea;
+            font-weight: bold;
+            margin: 15px 0;
+        }
+
+        .hotel-amenities {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .amenity {
+            background: #f0f0f0;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 0.9em;
+        }
+
+        .btn-book {
+            width: 100%;
+            background: #28a745;
+            color: white;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .btn-book:hover {
+            background: #218838;
+        }
+
+        .cost-summary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 12px;
+            margin-top: 30px;
+        }
+
+        .cost-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.3);
+        }
+
+        .cost-total {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px solid white;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #667eea;
+            font-weight: 600;
+            font-size: 1.2em;
+        }
+
+        .confirmation-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .confirmation-modal.active {
+            display: flex;
+        }
+
+        .confirmation-content {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+        }
+
+        .confirmation-content h2 {
+            color: #28a745;
+            margin-bottom: 20px;
+        }
+
+        .confirmation-details {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            text-align: left;
+        }
+
+        .confirmation-details p {
+            margin: 10px 0;
+            color: #333;
+        }
+
+        .modal-close-btn {
+            background: #667eea;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .modal-close-btn:hover {
+            background: #5568d3;
+        }
+    </style>
+</head>
+<body>
+    <div class="server-status" id="serverStatus">🔍 Checking Server...</div>
+
+    <!-- Booking Confirmation Modal -->
+    <div class="confirmation-modal" id="confirmationModal">
+        <div class="confirmation-content">
+            <h2>🎉 Booking Confirmed!</h2>
+            <div class="confirmation-details" id="confirmationDetails"></div>
+            <button class="modal-close-btn" onclick="closeConfirmation()">Close</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="header">
+            <h1>🌍 Smart Tourist Planner</h1>
+            <p>AI-powered with MongoDB & Dijkstra's Algorithm</p>
+        </div>
+
+        <div class="content">
+            <div class="input-section">
+                <div class="input-group">
+                    <label>Your Current Location</label>
+                    <input type="text" id="currentLocation" placeholder="e.g., New Delhi, India" value="New Delhi, India">
+                    <button class="location-btn" onclick="getUserLocation()">📍 Use My Location</button>
+                </div>
+
+                <div class="input-group">
+                 <label>Destination City</label>
+                 <select id="destination">
+                      <option value="Paris">Paris, France</option>
+                      <option value="Tokyo">Tokyo, Japan</option>
+                      <option value="New York">New York, USA</option>
+                      <option value="Dubai">Dubai, UAE</option>
+                      <option value="London">London, UK</option>
+
+                      <!-- Asia -->
+                     <option value="Singapore">Singapore</option>
+                     <option value="Bangkok">Bangkok, Thailand</option>
+                     <option value="HongKong">Hong Kong, China</option>
+                     <option value="Seoul">Seoul, South Korea</option>
+                     <option value="Bali">Bali, Indonesia</option>
+                     <option value="Shanghai">Shanghai, China</option>
+                     <option value="Beijing">Beijing, China</option>
+                     <option value="KualaLumpur">Kuala Lumpur, Malaysia</option>
+                     <option value="Doha">Doha, Qatar</option>
+                     <!-- Europe -->
+                     <option value="Rome">Rome, Italy</option>
+                     <option value="Barcelona">Barcelona, Spain</option>
+                     <option value="Berlin">Berlin, Germany</option>
+                     <option value="Istanbul">Istanbul, Turkey</option>
+                     <option value="Amsterdam">Amsterdam, Netherlands</option>
+                     <option value="Zurich">Zurich, Switzerland</option>
+                     <option value="Vienna">Vienna, Austria</option>
+                     <option value="Prague">Prague, Czech Republic</option>
+                     <option value="Athens">Athens, Greece</option>
+                     <!-- North America -->
+                     <option value="Toronto">Toronto, Canada</option>
+                     <option value="LosAngeles">Los Angeles, USA</option>
+                     <option value="SanFrancisco">San Francisco, USA</option>
+                     <option value="LasVegas">Las Vegas, USA</option>
+                     <option value="MexicoCity">Mexico City, Mexico</option>
+                     <!-- Oceania -->
+                     <option value="Sydney">Sydney, Australia</option>
+                     <option value="Melbourne">Melbourne, Australia</option>
+                     <option value="Auckland">Auckland, New Zealand</option>
+                     <!-- Middle East -->
+                     <option value="AbuDhabi">Abu Dhabi, UAE</option>
+                     <option value="Riyadh">Riyadh, Saudi Arabia</option>
+                     <!-- India -->
+                     <option value="Mumbai">Mumbai, India</option>
+                     <option value="Delhi">Delhi, India</option>
+                     <option value="Jaipur">Jaipur, India</option>
+                     <option value="Goa">Goa, India</option>
+                     <option value="Bangalore">Bangalore, India</option>
+                     <option value="Chennai">Chennai, India</option>
+                     <option value="Kolkata">Kolkata, India</option>
+                 </select>
+
+
+                </div>
+
+                <div class="input-group">
+                    <label>Number of Days</label>
+                    <input type="number" id="days" min="1" max="30" value="3">
+                </div>
+
+                <div class="input-group">
+                    <label>Number of Members</label>
+                    <input type="number" id="members" min="1" max="20" value="2">
+                </div>
+
+                <div class="input-group">
+                    <label>Budget per Person ($)</label>
+                    <input type="number" id="budget" min="100" value="1500">
+                </div>
+            </div>
+
+            <button class="btn-primary" id="generateBtn" onclick="generatePlan()">🚀 Generate AI-Optimized Plan</button>
+
+            <div class="results" id="results">
+                <h2 class="section-title">🗺️ Interactive Route Map</h2>
+                <div id="map"></div>
+
+                <div class="ai-analysis" id="aiAnalysis"></div>
+
+                <div class="route-map">
+                    <h2 class="section-title">📍 Optimal Route (Dijkstra's Algorithm)</h2>
+                    <div class="route-info" id="routeInfo"></div>
+                    <div class="path-visualization" id="pathViz"></div>
+                </div>
+
+                <h2 class="section-title">📅 Daily Itinerary</h2>
+                <div id="itinerary"></div>
+
+                <h2 class="section-title">🏨 Recommended Hotels</h2>
+                <div class="hotels-grid" id="hotels"></div>
+
+                <div class="cost-summary" id="costSummary"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const API_URL = 'http://localhost:5000/api';
+        let map;
+        let userCoords = null;
+        let currentPlanData = null;
+
+    const cityCoords = {
+    Paris: [48.8566, 2.3522],
+    Tokyo: [35.6762, 139.6503],
+    "New York": [40.7128, -74.0060],
+    Dubai: [25.2048, 55.2708],
+    London: [51.5074, -0.1278],
+
+    Singapore: [1.3521, 103.8198],
+    Bangkok: [13.7563, 100.5018],
+    HongKong: [22.3193, 114.1694],
+    Seoul: [37.5665, 126.9780],
+    Bali: [-8.4095, 115.1889],
+    Shanghai: [31.2304, 121.4737],
+    Beijing: [39.9042, 116.4074],
+    KualaLumpur: [3.1390, 101.6869],
+    Doha: [25.2854, 51.5310],
+
+    Rome: [41.9028, 12.4964],
+    Barcelona: [41.3851, 2.1734],
+    Berlin: [52.5200, 13.4050],
+    Istanbul: [41.0082, 28.9784],
+    Amsterdam: [52.3676, 4.9041],
+    Zurich: [47.3769, 8.5417],
+    Vienna: [48.2082, 16.3738],
+    Prague: [50.0755, 14.4378],
+    Athens: [37.9838, 23.7275],
+
+    Toronto: [43.6532, -79.3832],
+    LosAngeles: [34.0522, -118.2437],
+    SanFrancisco: [37.7749, -122.4194],
+    LasVegas: [36.1699, -115.1398],
+    MexicoCity: [19.4326, -99.1332],
+
+    Sydney: [-33.8688, 151.2093],
+    Melbourne: [-37.8136, 144.9631],
+    Auckland: [-36.8485, 174.7633],
+
+    AbuDhabi: [24.4539, 54.3773],
+    Riyadh: [24.7136, 46.6753],
+
+    Mumbai: [19.0760, 72.8777],
+    Delhi: [28.6139, 77.2090],
+    Jaipur: [26.9124, 75.7873],
+    Goa: [15.2993, 74.1240],
+    Bangalore: [12.9716, 77.5946],
+    Chennai: [13.0827, 80.2707],
+    Kolkata: [22.5726, 88.3639]
+};
+
+
+
+    const attractionCoords = {
+    Paris: [
+        [48.8584, 2.2945], [48.8606, 2.3376], [48.8530, 2.3499], [48.8738, 2.2950]
+    ],
+    Tokyo: [
+        [35.6586, 139.7454], [35.7101, 139.8107], [35.6895, 139.6917], [35.6595, 139.7004]
+    ],
+    "New York": [
+        [40.6892, -74.0445], [40.7829, -73.9654], [40.7580, -73.9855], [40.7484, -73.9857]
+    ],
+    Dubai: [
+        [25.1972, 55.2744], [25.1972, 55.2796], [25.1124, 55.1390], [25.0801, 55.1402]
+    ],
+    London: [
+        [51.5007, -0.1246], [51.5033, -0.1195], [51.5194, -0.1270], [51.5081, -0.0759]
+    ],
+
+    Singapore: [
+        [1.2834, 103.8607], [1.2816, 103.8636], [1.4043, 103.7930], [1.2561, 103.8189]
+    ],
+    Bangkok: [
+        [13.7460, 100.5347], [13.7649, 100.5383], [13.7515, 100.4927], [13.7563, 100.5018]
+    ],
+    HongKong: [
+        [22.3193, 114.1694], [22.3027, 114.1600], [22.2783, 114.1747], [22.2930, 114.2100]
+    ],
+    Seoul: [
+        [37.5796, 126.9770], [37.5512, 126.9882], [37.5707, 126.9920], [37.5663, 126.9779]
+    ],
+    Bali: [
+        [-8.4095, 115.1889], [-8.7237, 115.1730], [-8.3405, 115.0920], [-8.5090, 115.2625]
+    ],
+
+    Rome: [
+        [41.8902, 12.4922], [41.9009, 12.4833], [41.9029, 12.4534]
+    ],
+    Barcelona: [
+        [41.4036, 2.1744], [41.3917, 2.1649], [41.4145, 2.1527]
+    ],
+    Berlin: [
+        [52.5163, 13.3777], [52.5206, 13.3862], [52.5319, 13.3849]
+    ],
+    Istanbul: [
+        [41.0086, 28.9802], [41.0054, 28.9768], [41.0120, 28.9849]
+    ],
+
+    Toronto: [
+        [43.6426, -79.3871], [43.6677, -79.3948], [43.6387, -79.3950]
+    ],
+
+    Mumbai: [
+        [18.9218, 72.8344], [19.0176, 72.8562], [19.0822, 72.7411]
+    ],
+    Delhi: [
+        [28.6129, 77.2295], [28.6562, 77.2410], [28.5244, 77.1855]
+    ],
+    Jaipur: [
+        [26.9855, 75.8513], [27.0238, 75.8267], [26.9124, 75.7873]
+    ],
+    Goa: [
+        [15.2993, 74.1240], [15.5163, 73.9274], [15.5524, 73.7553]
+    ],
+    Bangalore: [
+        [12.9716, 77.5946], [12.9719, 77.6412], [12.9538, 77.4903]
+    ]
+};
+
+const hotels = [
+    { city: "Paris", name: "Eiffel View Palace", rating: 5, amenities: ["WiFi", "Restaurant"], price: 180 },
+    { city: "Paris", name: "Louvre Boutique Hotel", rating: 4, amenities: ["WiFi"], price: 120 },
+
+    { city: "Tokyo", name: "Tokyo Grand Hotel", rating: 5, amenities: ["Onsen", "Gym"], price: 200 },
+    { city: "Tokyo", name: "Shinjuku Plaza Inn", rating: 4, amenities: ["WiFi"], price: 130 },
+
+    { city: "New York", name: "The Plaza NYC", rating: 5, amenities: ["Spa"], price: 260 },
+    { city: "New York", name: "Times Square Hotel", rating: 4, amenities: ["Breakfast"], price: 150 },
+
+    { city: "Dubai", name: "Burj Al Arab Suites", rating: 5, amenities: ["Private Beach"], price: 340 },
+    { city: "Dubai", name: "Dubai Mall Hotel", rating: 4, amenities: ["WiFi"], price: 160 },
+
+    { city: "London", name: "London Grand Palace", rating: 5, amenities: ["Terrace"], price: 210 },
+
+    { city: "Singapore", name: "Marina Bay Sands", rating: 5, amenities: ["Infinity Pool"], price: 320 },
+
+    { city: "Bangkok", name: "Bangkok Royal Palace Hotel", rating: 5, amenities: ["Spa"], price: 150 },
+
+    { city: "Rome", name: "Colosseum Luxury Suites", rating: 5, amenities: ["WiFi"], price: 230 },
+
+    { city: "Barcelona", name: "Sagrada Familia View Hotel", rating: 5, amenities: ["Pool"], price: 210 },
+
+    { city: "Berlin", name: "Berlin Capital Hotel", rating: 5, amenities: ["Gym"], price: 190 },
+
+    { city: "Istanbul", name: "Hagia Sophia Resort", rating: 5, amenities: ["Spa"], price: 170 },
+
+    { city: "Toronto", name: "Toronto Skyline Hotel", rating: 5, amenities: ["Pool"], price: 230 },
+
+    { city: "Mumbai", name: "Taj Mahal Palace", rating: 5, amenities: ["Sea View"], price: 250 },
+
+    { city: "Delhi", name: "The Imperial Delhi", rating: 5, amenities: ["Gym"], price: 220 },
+
+    { city: "Jaipur", name: "Rambagh Palace", rating: 5, amenities: ["Heritage"], price: 260 },
+
+    { city: "Goa", name: "Goa Beach Resort", rating: 5, amenities: ["Sea View"], price: 180 },
+
+    { city: "Bangalore", name: "UB City Suites", rating: 5, amenities: ["WiFi"], price: 200 }
+];
+
+
+        // Check server on load
+        checkServerStatus();
+
+        async function checkServerStatus() {
+            try {
+                const res = await fetch(`${API_URL}/destinations`);
+                const data = await res.json();
+                document.getElementById('serverStatus').textContent = '🟢 MongoDB Connected';
+                document.getElementById('serverStatus').className = 'server-status online';
+            } catch (error) {
+                document.getElementById('serverStatus').textContent = '🔴 Server Offline - Run: node server.js';
+                document.getElementById('serverStatus').className = 'server-status offline';
+            }
+        }
+
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        function getUserLocation() {
+            if (navigator.geolocation) {
+                document.getElementById('currentLocation').value = '🔍 Getting location...';
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        userCoords = [position.coords.latitude, position.coords.longitude];
+                        document.getElementById('currentLocation').value = `Lat: ${userCoords[0].toFixed(2)}, Lon: ${userCoords[1].toFixed(2)}`;
+                        alert('✅ Location detected!');
+                    },
+                    (error) => {
+                        alert('❌ Location access denied. Using default.');
+                        document.getElementById('currentLocation').value = 'New Delhi, India';
+                        userCoords = [28.6139, 77.2090];
+                    }
+                );
+            } else {
+                alert('❌ Geolocation not supported');
+                userCoords = [28.6139, 77.2090];
+            }
+        }
+
+        function initMap(destination, attractions, userLat, userLon) {
+            const destCoords = cityCoords[destination];
+            const centerLat = (userLat + destCoords[0]) / 2;
+            const centerLon = (userLon + destCoords[1]) / 2;
+            
+            if (map) map.remove();
+            
+            map = L.map('map').setView([centerLat, centerLon], 3);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '© OpenStreetMap'
+            }).addTo(map);
+
+            const userIcon = L.divIcon({
+                html: '<div style="background: #28a745; color: white; width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">📍</div>',
+                className: '',
+                iconSize: [35, 35]
+            });
+
+            const destIcon = L.divIcon({
+                html: '<div style="background: #dc3545; color: white; width: 35px; height: 35px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; border: 3px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">🎯</div>',
+                className: '',
+                iconSize: [35, 35]
+            });
+
+            L.marker([userLat, userLon], {icon: userIcon}).addTo(map).bindPopup('<b>📍 Your Location</b>');
+            L.marker(destCoords, {icon: destIcon}).addTo(map).bindPopup(`<b>🎯 ${destination}</b>`);
+            L.polyline([[userLat, userLon], destCoords], {
+                color: '#667eea',
+                weight: 4,
+                opacity: 0.7,
+                dashArray: '10, 10'
+            }).addTo(map);
+
+            const coords = attractionCoords[destination];
+            coords.forEach((coord, i) => {
+                if (i < attractions.length) {
+                    const attrIcon = L.divIcon({
+                        html: `<div style="background: #667eea; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; border: 2px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);">${i+1}</div>`,
+                        className: '',
+                        iconSize: [28, 28]
+                    });
+                    
+                    L.marker(coord, {icon: attrIcon}).addTo(map).bindPopup(`<b>${i+1}. ${attractions[i]}</b>`);
+                }
+            });
+
+            const bounds = L.latLngBounds([[userLat, userLon], destCoords]);
+            coords.forEach(coord => bounds.extend(coord));
+            map.fitBounds(bounds, {padding: [50, 50]});
+        }
+
+        function analyzeRoute(distance, attractions) {
+            const insights = [];
+            const duration = distance / 800;
+            
+            if (distance > 10000) {
+                insights.push("🛫 Long-haul flight recommended - Book 2-3 months ahead");
+                insights.push(`✈️ Flight time: ~${duration.toFixed(1)} hours`);
+            } else if (distance > 2000) {
+                insights.push("✈️ International flight - Check visa requirements");
+                insights.push(`⏱️ Travel time: ${duration.toFixed(1)} hours`);
+            } else if (distance > 500) {
+                insights.push("🚄 Train or regional flight options available");
+            } else {
+                insights.push("🚗 Perfect for road trip!");
+            }
+
+            if (attractions > 5) {
+                insights.push("📸 Plan at least 3 days for all attractions");
+            }
+
+            insights.push("🤖 Route optimized using Dijkstra's shortest path algorithm");
+            
+            return insights;
+        }
+
+        async function generatePlan() {
+            const destination = document.getElementById('destination').value;
+            const days = parseInt(document.getElementById('days').value);
+            const members = parseInt(document.getElementById('members').value);
+            const budget = parseInt(document.getElementById('budget').value);
+
+            const btn = document.getElementById('generateBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Generating Plan...';
+
+            const userLat = userCoords ? userCoords[0] : 28.6139;
+            const userLon = userCoords ? userCoords[1] : 77.2090;
+
+            try {
+                const response = await fetch(`${API_URL}/generatePlan`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ destination, days, members, budget })
+                });
+
+                if (!response.ok) throw new Error('Server error');
+
+                const data = await response.json();
+                currentPlanData = { ...data, members, days, budget };
+
+                document.getElementById('results').classList.add('active');
+                document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+
+                const destCoords = cityCoords[destination];
+                const distance = calculateDistance(userLat, userLon, destCoords[0], destCoords[1]);
+
+                initMap(destination, data.route.path, userLat, userLon);
+
+                const insights = analyzeRoute(distance, data.route.path.length);
+                displayAIAnalysis(distance, insights);
+                displayRoute(data.route);
+                displayItinerary(data.itinerary);
+                displayHotels(data.hotels, data.costs, destination);
+                displayCosts(data.costs, budget);
+
+            } catch (error) {
+                alert('❌ Backend error! Ensure MongoDB is running:\n\n1. Start MongoDB\n2. Run: node server.js\n3. Server should be on port 5000');
+                console.error(error);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🚀 Generate AI-Optimized Plan';
+            }
+        }
+
+        function displayAIAnalysis(distance, insights) {
+            document.getElementById('aiAnalysis').innerHTML = `
+                <div class="ai-badge">🤖 AI Route Analysis</div>
+                <h3 style="margin-bottom: 15px;">Shortest Distance</h3>
+                <div style="font-size: 2.2em; font-weight: bold; margin-bottom: 10px;">
+                    ${distance.toFixed(0)} km
+                </div>
+                <div style="background: rgba(255,255,255,0.2); padding: 20px; border-radius: 8px;">
+                    <strong style="font-size: 1.1em;">💡 Insights:</strong>
+                    <ul style="margin-top: 15px; list-style-position: inside; line-height: 1.8;">
+                        ${insights.map(insight => `<li style="margin: 10px 0;">${insight}</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+        }
+
+        function displayRoute(route) {
+            document.getElementById('routeInfo').innerHTML = `
+                <div class="route-stat">
+                    <div class="value">${route.path.length}</div>
+                    <div class="label">Attractions</div>
+                </div>
+                <div class="route-stat">
+                    <div class="value">${route.distance.toFixed(1)}</div>
+                    <div class="label">Route Distance (km)</div>
+                </div>
+                <div class="route-stat">
+                    <div class="value">${Math.ceil(route.distance / 5)}</div>
+                    <div class="label">Travel Hours</div>
+                </div>
+            `;
+
+            document.getElementById('pathViz').innerHTML = route.path.map((node, i) => {
+                if (i === route.path.length - 1) return `<div class="path-node">${node}</div>`;
+                return `<div class="path-node">${node}</div><div class="path-arrow">→</div>`;
+            }).join('');
+        }
+
+        function displayItinerary(itinerary) {
+            document.getElementById('itinerary').innerHTML = itinerary.map(day => `
+                <div class="itinerary-day">
+                    <div class="day-header">Day ${day.day}</div>
+                    ${day.activities.map(act => `
+                        <div class="activity">
+                            <div class="activity-time">${act.time}</div>
+                            <div class="activity-details">
+                                <strong>${act.title}</strong><br>
+                                <span style="color: #666;">Duration: ${act.duration_hours} hours</span>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `).join('');
+        }
+
+        function displayHotels(hotels, costs, destination) {
+            document.getElementById('hotels').innerHTML = costs.hotelCosts.map(hotelCost => {
+                const hotel = hotels.find(h => h.name === hotelCost.name);
+                const isRecommended = hotelCost.name === costs.recommended.name;
+                
+                return `
+                    <div class="hotel-card ${isRecommended ? 'recommended' : ''}">
+                        ${isRecommended ? '<div class="recommended-badge">✨ Best Value</div>' : ''}
+                        <div class="hotel-name">${hotelCost.name}</div>
+                        <div class="hotel-rating">${'⭐'.repeat(hotelCost.rating)}</div>
+                        <div class="hotel-amenities">
+                            ${hotelCost.amenities.map(a => `<span class="amenity">${a}</span>`).join('')}
+                        </div>
+                        <div class="hotel-price">$${hotelCost.total}</div>
+                        <div style="color: #666; margin-bottom: 15px;">
+                            ${costs.roomsNeeded} room(s) × ${currentPlanData.days} night(s)<br>
+                            <strong>${hotelCost.perPerson.toFixed(2)}/person</strong>
+                        </div>
+                        <button class="btn-book" onclick="bookHotel('${hotelCost.name}', '${destination}', ${hotelCost.total})">
+                            Book Now
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function displayCosts(costs, budgetPerPerson) {
+            const totalBudget = budgetPerPerson * costs.members;
+            const withinBudget = costs.recommended.total <= totalBudget;
+            const difference = Math.abs(totalBudget - costs.recommended.total);
+
+            document.getElementById('costSummary').innerHTML = `
+                <h3 style="margin-bottom: 20px;">💰 Trip Cost Summary</h3>
+                <div class="cost-row">
+                    <span>Group Size</span>
+                    <span>${costs.members} members</span>
+                </div>
+                <div class="cost-row">
+                    <span>Rooms Needed</span>
+                    <span>${costs.roomsNeeded} rooms</span>
+                </div>
+                <div class="cost-row">
+                    <span>Recommended Hotel</span>
+                    <span>${costs.recommended.name}</span>
+                </div>
+                <div class="cost-row">
+                    <span>Accommodation (${costs.roomsNeeded} rooms)</span>
+                    <span>${costs.recommended.total}</span>
+                </div>
+                <div class="cost-total">
+                    <div class="cost-row">
+                        <span>Total Budget</span>
+                        <span>${totalBudget}</span>
+                    </div>
+                    <div class="cost-row" style="border: none;">
+                        <span>Per Person</span>
+                        <span>${(costs.recommended.total / costs.members).toFixed(2)}</span>
+                    </div>
+                </div>
+                ${withinBudget ? 
+                    `<div style="background: rgba(40, 167, 69, 0.3); padding: 15px; border-radius: 8px; margin-top: 15px;">
+                        ✅ Within budget! You save ${difference.toFixed(2)}
+                    </div>` : 
+                    `<div style="background: rgba(220, 53, 69, 0.3); padding: 15px; border-radius: 8px; margin-top: 15px;">
+                        ⚠️ Over budget by ${difference.toFixed(2)}
+                    </div>`
+                }
+            `;
+        }
+
+        async function bookHotel(hotelName, destination, totalCost) {
+            if (!currentPlanData) {
+                alert('❌ Please generate a plan first');
+                return;
+            }
+
+            const { members, days } = currentPlanData;
+            const rooms = Math.ceil(members / 2);
+
+            try {
+                const response = await fetch(`${API_URL}/book-hotel`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        hotelName,
+                        destination,
+                        members,
+                        days,
+                        rooms,
+                        totalCost
+                    })
+                });
+
+                if (!response.ok) throw new Error('Booking failed');
+
+                const data = await response.json();
+                showConfirmation(data.confirmation);
+
+                // Optionally save trip to database
+                await fetch(`${API_URL}/save-trip`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        destination,
+                        days,
+                        members,
+                        budget: currentPlanData.budget,
+                        itinerary: currentPlanData.itinerary,
+                        route: currentPlanData.route
+                    })
+                });
+
+            } catch (error) {
+                alert('❌ Booking failed! Make sure the backend is running.');
+                console.error(error);
+            }
+        }
+
+        function showConfirmation(confirmation) {
+            document.getElementById('confirmationDetails').innerHTML = `
+                <p><strong>🎫 Booking ID:</strong> ${confirmation.bookingId}</p>
+                <p><strong>🏨 Hotel:</strong> ${confirmation.hotelName}</p>
+                <p><strong>📍 Destination:</strong> ${confirmation.destination}</p>
+                <p><strong>👥 Members:</strong> ${confirmation.members}</p>
+                <p><strong>📅 Days:</strong> ${confirmation.days}</p>
+                <p><strong>✅ Status:</strong> ${confirmation.status}</p>
+                <p><strong>🕒 Booked:</strong> ${new Date(confirmation.timestamp).toLocaleString()}</p>
+            `;
+            document.getElementById('confirmationModal').classList.add('active');
+        }
+
+        function closeConfirmation() {
+            document.getElementById('confirmationModal').classList.remove('active');
+        }
+    </script>
+</body>
+</html>
